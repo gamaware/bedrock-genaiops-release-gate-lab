@@ -228,7 +228,14 @@ Workflows start from `permissions: {}`, pin actions by SHA and set timeouts. Pul
   Lite. The stack itself is a KMS key, two SSM parameters, one alarm and an almost empty bucket, about USD 1.50 a month
   in `us-east-1`.
 
-## Built on
+## Related work
+
+Part of the [AWS DevOps portfolio](https://github.com/gamaware/aws-devops-portfolio), under the service
+[GenAI release pipeline and evaluations on Upwork](https://www.upwork.com/freelancers/~014b3520cf9e140103). The
+keyless deploy roles and workflow hardening come from
+[github-actions-aws-oidc-lab](https://github.com/gamaware/github-actions-aws-oidc-lab).
+
+### Built on
 
 Ideas, not code, come from these sources. No file here is copied from them.
 
@@ -245,13 +252,6 @@ Ideas, not code, come from these sources. No file here is copied from them.
   (GENOPS04-BP02): method, cited.
 - [Creating Responsible AI With Amazon Bedrock Guardrails](https://catalog.workshops.aws/bedrockguard/en-US/amazon-bedrock-guardrails)
   (workshop): guardrail policy design, cited only.
-
-## Related work
-
-Part of the [AWS DevOps portfolio](https://github.com/gamaware/aws-devops-portfolio), under the service
-[GenAI release pipeline and evaluations on Upwork](https://www.upwork.com/freelancers/~014b3520cf9e140103). The
-keyless deploy roles and workflow hardening come from
-[github-actions-aws-oidc-lab](https://github.com/gamaware/github-actions-aws-oidc-lab).
 
 ## License
 
