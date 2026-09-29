@@ -1,0 +1,30 @@
+# Harbor Goods support assistant: every pin that changes an answer.
+# Schema: src/genai_gate/release.schema.json. Validate with `make validate`.
+release:
+  name: support-answer
+  change: 'Guardrail version 4: stop masking phone numbers to cut false positives.'
+model:
+  id: amazon.nova-lite-v1:0
+  inference:
+    max_tokens: 400
+    temperature: 0.2
+    top_p: 0.9
+prompt:
+  arn: arn:aws:bedrock:us-east-1:111122223333:prompt/HGSUPPORT1
+  version: '4'
+  template_file: prompt.txt
+  template_sha256: 6533f6a4aa3aa77007d7beb2407e0216bbcdb48e931aba918ddc068e4ca881e6
+guardrail:
+  id: hg7k2m9q4x1a
+  version: '4'
+  policies:
+  - content
+  - denied_topics
+  - sensitive_information
+  - contextual_grounding
+knowledge_base:
+  id: HGPOLICYKB
+  chunking:
+    strategy: FIXED_SIZE
+    max_tokens: 300
+    overlap_percentage: 20

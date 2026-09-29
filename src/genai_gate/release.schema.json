@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/gamaware/bedrock-genaiops-release-gate-lab/src/genai_gate/release.schema.json",
+  "title": "Harbor Goods GenAI release",
+  "description": "Pins everything that changes the support assistant's answers: model, prompt version, guardrail version and knowledge base.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["release", "model", "prompt", "guardrail", "knowledge_base"],
+  "properties": {
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "change"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,40}$"},
+        "change": {"type": "string", "minLength": 10, "maxLength": 200}
+      }
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "inference"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^(us\\.|eu\\.|global\\.)?[a-z0-9-]+\\.[a-z0-9.:-]+$"},
+        "inference": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["max_tokens", "temperature"],
+          "properties": {
+            "max_tokens": {"type": "integer", "minimum": 64, "maximum": 2048},
+            "temperature": {"type": "number", "minimum": 0, "maximum": 1},
+            "top_p": {"type": "number", "exclusiveMinimum": 0, "maximum": 1}
+          }
+        }
+      }
+    },
+    "prompt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["arn", "version", "template_file", "template_sha256"],
+      "properties": {
+        "arn": {"type": "string", "pattern": "^arn:aws:bedrock:[a-z0-9-]+:[0-9]{12}:prompt/[A-Z0-9]{10}$"},
+        "version": {"type": "string", "pattern": "^[1-9][0-9]*$"},
+        "template_file": {"type": "string", "pattern": "^[A-Za-z0-9._/-]+\\.txt$"},
+        "template_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    },
+    "guardrail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "policies"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9]{12}$"},
+        "version": {"type": "string", "pattern": "^[1-9][0-9]*$"},
+        "policies": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"enum": ["content", "denied_topics", "sensitive_information", "word", "contextual_grounding"]}
+        }
+      }
+    },
+    "knowledge_base": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "chunking"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[A-Z0-9]{10}$"},
+        "chunking": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["strategy", "max_tokens", "overlap_percentage"],
+          "properties": {
+            "strategy": {"enum": ["FIXED_SIZE", "HIERARCHICAL", "SEMANTIC"]},
+            "max_tokens": {"type": "integer", "minimum": 100, "maximum": 1000},
+            "overlap_percentage": {"type": "integer", "minimum": 0, "maximum": 50}
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+# Models a release may pin, with the unit prices the cost check uses.
+# Prices are on-demand, us-east-1, in USD, per 1M tokens. They are inputs the
+# client owns: update them from the Amazon Bedrock pricing page when AWS
+# changes a price, in the same pull request that the gate then re-scores.
+# A model that is not listed here cannot be released.
+
+models:
+  amazon.nova-micro-v1:0:
+    input_per_1m_tokens: 0.035
+    output_per_1m_tokens: 0.14
+    note: Lowest cost; short answers only.
+  amazon.nova-lite-v1:0:
+    input_per_1m_tokens: 0.06
+    output_per_1m_tokens: 0.24
+    note: Current production model.
+  us.anthropic.claude-haiku-4-5-20251001-v1:0:
+    input_per_1m_tokens: 1.00
+    output_per_1m_tokens: 5.00
+    note: Cross-Region inference profile; needs the Anthropic use-case form once per account.
+
+# Amazon Bedrock Guardrails bills per text unit (up to 1,000 characters) and
+# per policy that evaluates it.
+guardrail_per_1k_text_units:
+  content: 0.15
+  denied_topics: 0.15
+  sensitive_information: 0.10
+  word: 0.00
+  contextual_grounding: 0.10

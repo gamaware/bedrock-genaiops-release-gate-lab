@@ -1,0 +1,3 @@
+# Copy to terraform.tfvars (git-ignored) and fill in. Account 111122223333 is an AWS documentation example.
+github_repository        = "harbor-goods/support-assistant"
+github_oidc_provider_arn = "arn:aws:iam::111122223333:oidc-provider/token.actions.githubusercontent.com"

@@ -1,0 +1,45 @@
+[project]
+name = "genai-gate"
+version = "0.1.0"
+description = "Release gate for prompt, model and guardrail changes on Amazon Bedrock"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.13"
+dependencies = [
+  "jsonschema==4.25.1",
+  "pyyaml==6.0.3",
+]
+
+[project.optional-dependencies]
+# Only the live stage (collect --live) needs the AWS SDK.
+live = ["boto3==1.40.61"]
+
+[project.scripts]
+genai-gate = "genai_gate.cli:main"
+
+[dependency-groups]
+dev = [
+  "boto3==1.40.61",
+  "pytest==9.1.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.9,<0.13"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# src on the path directly, so tests do not depend on the editable-install .pth file.
+pythonpath = ["src", "tests"]
+addopts = "-q"
+
+[tool.ruff]
+target-version = "py313"
+line-length = 120
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "B", "UP", "S", "SIM", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]

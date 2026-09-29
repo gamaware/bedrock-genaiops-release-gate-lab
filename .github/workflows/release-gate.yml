@@ -1,0 +1,209 @@
+name: release-gate
+
+# The release pipeline for the support assistant's prompt, model and guardrail.
+#
+#   offline-gate  every pull request that touches a release input. Scores the
+#                 recorded run in release/candidate/ against production with
+#                 the policy in gate/. No AWS access. Blocks the merge on BLOCK.
+#   live-gate     manual (Run workflow on main), GitHub environment genai-staging.
+#                 Checks release/production is the release the prod alias
+#                 serves, records a fresh run against Amazon Bedrock (the
+#                 pinned prompt version, knowledge base retrieval, Converse,
+#                 ApplyGuardrail, LLM-as-judge), gates it, and on PASS writes
+#                 the staging alias in SSM Parameter Store.
+#   promote       after live-gate, GitHub environment genai-prod with a
+#                 required reviewer, who approves on the evidence artifact.
+#                 Writes the prod alias.
+#
+# Rollback is its own manual workflow (rollback.yml). It shares the promotion
+# concurrency group, so two writes to an alias never overlap.
+#
+# AWS access is keyless (GitHub OIDC) through two roles from
+# infra/terraform/release-gate: the gate role (staging only) and the promote
+# role (prod only). Set AWS_REGION and AWS_GATE_ROLE_ARN on the genai-staging
+# environment and AWS_REGION and AWS_PROMOTE_ROLE_ARN on genai-prod (the
+# terraform outputs). Environment variables exist only once a job that names
+# the environment starts, so each live job checks them in its first step and
+# fails with a clear error when one is missing. Pull requests only run the
+# offline gate. Restrict both environments to the main branch.
+on:
+  pull_request:
+    paths:
+      - release/**
+      - evals/**
+      - gate/**
+      - src/**
+      - uv.lock
+      - .github/workflows/release-gate.yml
+  workflow_dispatch:
+
+permissions: {}
+
+# Pull requests gate in parallel. Promotions never cancel halfway; they queue.
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('release-gate-pr-{0}', github.ref) || 'release-gate-promotion' }}
+  cancel-in-progress: false
+
+jobs:
+  offline-gate:
+    name: Offline gate (recorded run)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read # checkout
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: false
+
+      - name: Gate the release candidate
+        run: make gate EVIDENCE_DIR=build/evidence
+
+      - name: Evidence to the job summary
+        if: always()
+        run: |
+          if [ -f build/evidence/evidence.md ]; then
+            cat build/evidence/evidence.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Keep the evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-evidence-offline
+          path: build/evidence/
+          retention-days: 90
+          if-no-files-found: ignore
+
+  live-gate:
+    name: Live gate (staging)
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: genai-staging
+    permissions:
+      contents: read # checkout
+      id-token: write # OIDC to the gate role
+    steps:
+      - name: Check the environment variables
+        env:
+          ROLE_ARN: ${{ vars.AWS_GATE_ROLE_ARN }}
+          REGION: ${{ vars.AWS_REGION }}
+        run: |
+          if [ -z "$ROLE_ARN" ] || [ -z "$REGION" ]; then
+            echo "::error::Set AWS_GATE_ROLE_ARN and AWS_REGION on the genai-staging environment (terraform outputs)"
+            exit 1
+          fi
+
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: false
+
+      - name: AWS credentials (gate role)
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_GATE_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Check the baseline is the release prod serves
+        env:
+          PYTHONPATH: src
+        run: |
+          mkdir -p build
+          aws ssm get-parameter --name "/${GENAI_NAME:-harbor-support}/prod/release" --with-decryption \
+            --query Parameter.Value --output text > build/prod-serving.json
+          uv run --frozen python -m genai_gate.cli check-baseline \
+            --baseline-release release/production/release.yaml --serving-config build/prod-serving.json
+
+      - name: Record a live run
+        env:
+          PYTHONPATH: src
+        run: |
+          uv run --frozen --extra live python -m genai_gate.cli collect --live \
+            --release release/candidate/release.yaml --out build/run --region "$AWS_REGION"
+
+      - name: Gate the live run
+        env:
+          PYTHONPATH: src
+        run: |
+          uv run --frozen python -m genai_gate.cli evaluate \
+            --release release/candidate/release.yaml --run build/run \
+            --baseline-release release/production/release.yaml --baseline-run release/production/run \
+            --evidence-dir build/evidence --title "support-answer live gate" > /dev/null
+
+      - name: Evidence to the job summary
+        if: always()
+        run: |
+          if [ -f build/evidence/evidence.md ]; then
+            cat build/evidence/evidence.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Keep the run and the evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-evidence-live
+          path: |
+            build/run/
+            build/evidence/
+          retention-days: 90
+          if-no-files-found: ignore
+
+      - name: Promote to staging
+        run: scripts/promote.sh staging release/candidate/release.yaml
+
+  promote:
+    name: Promote to production
+    needs: live-gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: genai-prod
+    permissions:
+      contents: read # checkout
+      id-token: write # OIDC to the promote role
+    steps:
+      - name: Check the environment variables
+        env:
+          ROLE_ARN: ${{ vars.AWS_PROMOTE_ROLE_ARN }}
+          REGION: ${{ vars.AWS_REGION }}
+        run: |
+          if [ -z "$ROLE_ARN" ] || [ -z "$REGION" ]; then
+            echo "::error::Set AWS_PROMOTE_ROLE_ARN and AWS_REGION on the genai-prod environment (terraform outputs)"
+            exit 1
+          fi
+
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: false
+
+      - name: AWS credentials (promote role)
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_PROMOTE_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Promote to prod
+        run: scripts/promote.sh prod release/candidate/release.yaml
+
+      - name: Remind to move the baseline
+        run: |
+          echo "::notice::Prod now serves release/candidate. Commit it and its recorded run to release/production; the next live gate blocks until the baseline matches prod."

@@ -1,0 +1,6 @@
+{
+  "verdict": "BLOCK",
+  "failed_checks": [
+    "quality"
+  ]
+}

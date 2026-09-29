@@ -1,0 +1,54 @@
+name: rollback
+
+# Restore the prod alias's previous serving configuration (SSM parameter
+# history), for example when the guardrail intervention alarm fires after a
+# release. Manual, main branch only, GitHub environment genai-prod, promote
+# role through OIDC. See docs/runbook.md.
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: release-gate-promotion
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    name: Roll back production
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: genai-prod
+    permissions:
+      contents: read # checkout
+      id-token: write # OIDC to the promote role
+    steps:
+      # Environment variables resolve only inside a job that names the environment.
+      - name: Check the environment variables
+        env:
+          ROLE_ARN: ${{ vars.AWS_PROMOTE_ROLE_ARN }}
+          REGION: ${{ vars.AWS_REGION }}
+        run: |
+          if [ -z "$ROLE_ARN" ] || [ -z "$REGION" ]; then
+            echo "::error::Set AWS_PROMOTE_ROLE_ARN and AWS_REGION on the genai-prod environment (terraform outputs)"
+            exit 1
+          fi
+
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: AWS credentials (promote role)
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_PROMOTE_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Roll back prod
+        run: scripts/rollback.sh prod
+
+      - name: Remind to move the baseline
+        run: |
+          echo "::notice::Prod serves the previous release again. Restore release/production to it; the next live gate blocks until the baseline matches prod."
