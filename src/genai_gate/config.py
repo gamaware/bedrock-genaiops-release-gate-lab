@@ -11,7 +11,6 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from importlib import resources
 from pathlib import Path
 from typing import Any
 
@@ -85,7 +84,7 @@ def _load_yaml(path: Path) -> Any:
 
 
 def _schema() -> dict[str, Any]:
-    text = resources.files("genai_gate").joinpath("release.schema.json").read_text(encoding="utf-8")
+    text = Path(__file__).with_name("release.schema.json").read_text(encoding="utf-8")
     return json.loads(text)
 
 
