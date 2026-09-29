@@ -5,6 +5,8 @@
         --baseline-release B --baseline-run DIR      score a recorded run; exit 0 PASS, 1 BLOCK
     genai-gate collect --release R --out DIR --live  record a run against Amazon Bedrock (live stage only)
     genai-gate serving-config --release R            the JSON value promoted through SSM Parameter Store
+    genai-gate check-baseline --baseline-release B \
+        --serving-config FILE                        the baseline is what the prod alias serves
 
 Exit codes: 0 pass, 1 blocked, 2 invalid input or incomplete evidence. The
 pipeline treats anything but 0 as a blocked release.
@@ -60,6 +62,10 @@ def _parser() -> argparse.ArgumentParser:
 
     serving = sub.add_parser("serving-config", help="print the SSM parameter value for a release")
     serving.add_argument("--release", type=Path, required=True)
+
+    baseline = sub.add_parser("check-baseline", help="check the baseline is the release production serves")
+    baseline.add_argument("--baseline-release", type=Path, required=True)
+    baseline.add_argument("--serving-config", type=Path, required=True, help="the prod alias's SSM parameter value")
     return parser
 
 
@@ -103,7 +109,7 @@ def _collect(args: argparse.Namespace) -> int:
     import boto3  # optional dependency: only the live stage installs it
 
     from genai_gate.collect import collect
-    from genai_gate.live import BedrockGuardrail, BedrockJudge, BedrockModel
+    from genai_gate.live import BedrockGuardrail, BedrockJudge, BedrockModel, BedrockPrompt, BedrockRetriever
 
     release = load_release(args.release)
     problems = release_problems(release, load_catalog(args.models))
@@ -112,11 +118,16 @@ def _collect(args: argparse.Namespace) -> int:
         return EXIT_BLOCK
     client = boto3.client("bedrock-runtime", region_name=args.region)
     guardrail = release.data["guardrail"]
+    prompt = release.data["prompt"]
     collect(
         release=release,
         golden=load_golden_set(args.golden),
         redteam=load_redteam_set(args.redteam),
         set_digests=(file_digest(args.golden), file_digest(args.redteam)),
+        prompt=BedrockPrompt(boto3.client("bedrock-agent", region_name=args.region), prompt["arn"], prompt["version"]),
+        retriever=BedrockRetriever(
+            boto3.client("bedrock-agent-runtime", region_name=args.region), release.data["knowledge_base"]["id"]
+        ),
         model=BedrockModel(client, release.model_id, release.data["model"]["inference"]),
         guardrail=BedrockGuardrail(client, guardrail["id"], guardrail["version"]),
         judge=BedrockJudge(client, args.judge_model, args.rubric.read_text(encoding="utf-8")),
@@ -143,6 +154,46 @@ def serving_config(release_path: Path) -> dict[str, object]:
     }
 
 
+UNSET = {"release": "unset"}
+
+
+def baseline_problem(baseline_path: Path, serving: object) -> str | None:
+    """Why the committed baseline is not the release the prod alias serves, or None if it is.
+
+    Promotion and rollback change the prod alias; the baseline in
+    release/production must follow them, or the gate compares candidates
+    with a release customers no longer get.
+    """
+    baseline = load_release(baseline_path)
+    if serving == UNSET:
+        return None  # nothing promoted yet: the committed baseline is the only reference
+    if not isinstance(serving, dict) or not isinstance(serving.get("release_digest"), str):
+        return "the prod serving configuration has no release_digest"
+    served = serving["release_digest"]
+    if served != baseline.digest:
+        return (
+            f"prod serves release {served[:12]}, but the baseline {baseline_path} is {baseline.digest[:12]}: "
+            "commit the promoted release and its recorded run to release/production, then gate again"
+        )
+    return None
+
+
+def _check_baseline(args: argparse.Namespace) -> int:
+    try:
+        serving = json.loads(args.serving_config.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise EvidenceError(f"{args.serving_config}: cannot read the serving configuration ({exc})") from exc
+    problem = baseline_problem(args.baseline_release, serving)
+    if problem:
+        print(f"genai-gate: {problem}", file=sys.stderr)
+        return EXIT_BLOCK
+    if serving == UNSET:
+        print("prod alias is unset: nothing promoted yet, gating against the committed baseline")
+    else:
+        print(f"baseline {args.baseline_release} is the release prod serves")
+    return EXIT_PASS
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
@@ -152,6 +203,8 @@ def main(argv: list[str] | None = None) -> int:
             return _evaluate(args)
         if args.command == "collect":
             return _collect(args)
+        if args.command == "check-baseline":
+            return _check_baseline(args)
         print(json.dumps(serving_config(args.release), sort_keys=True, separators=(",", ":")))
         return EXIT_PASS
     except (ConfigError, EvidenceError) as exc:

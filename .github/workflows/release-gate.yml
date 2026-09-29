@@ -6,7 +6,9 @@ name: release-gate
 #                 recorded run in release/candidate/ against production with
 #                 the policy in gate/. No AWS access. Blocks the merge on BLOCK.
 #   live-gate     manual (Run workflow on main), GitHub environment genai-staging.
-#                 Records a fresh run against Amazon Bedrock (Converse +
+#                 Checks release/production is the release the prod alias
+#                 serves, records a fresh run against Amazon Bedrock (the
+#                 pinned prompt version, knowledge base retrieval, Converse,
 #                 ApplyGuardrail, LLM-as-judge), gates it, and on PASS writes
 #                 the staging alias in SSM Parameter Store.
 #   promote       after live-gate, GitHub environment genai-prod with a
@@ -18,9 +20,12 @@ name: release-gate
 #
 # AWS access is keyless (GitHub OIDC) through two roles from
 # infra/terraform/release-gate: the gate role (staging only) and the promote
-# role (prod only). Until the repository variables AWS_REGION,
-# AWS_GATE_ROLE_ARN and AWS_PROMOTE_ROLE_ARN are set (the terraform outputs),
-# only the offline gate runs. Restrict both environments to the main branch.
+# role (prod only). Set AWS_REGION and AWS_GATE_ROLE_ARN on the genai-staging
+# environment and AWS_REGION and AWS_PROMOTE_ROLE_ARN on genai-prod (the
+# terraform outputs). Environment variables exist only once a job that names
+# the environment starts, so each live job checks them in its first step and
+# fails with a clear error when one is missing. Pull requests only run the
+# offline gate. Restrict both environments to the main branch.
 on:
   pull_request:
     paths:
@@ -79,9 +84,7 @@ jobs:
 
   live-gate:
     name: Live gate (staging)
-    if: >-
-      github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' &&
-      vars.AWS_GATE_ROLE_ARN != ''
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: genai-staging
@@ -89,6 +92,16 @@ jobs:
       contents: read # checkout
       id-token: write # OIDC to the gate role
     steps:
+      - name: Check the environment variables
+        env:
+          ROLE_ARN: ${{ vars.AWS_GATE_ROLE_ARN }}
+          REGION: ${{ vars.AWS_REGION }}
+        run: |
+          if [ -z "$ROLE_ARN" ] || [ -z "$REGION" ]; then
+            echo "::error::Set AWS_GATE_ROLE_ARN and AWS_REGION on the genai-staging environment (terraform outputs)"
+            exit 1
+          fi
+
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -104,6 +117,16 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_GATE_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Check the baseline is the release prod serves
+        env:
+          PYTHONPATH: src
+        run: |
+          mkdir -p build
+          aws ssm get-parameter --name "/${GENAI_NAME:-harbor-support}/prod/release" --with-decryption \
+            --query Parameter.Value --output text > build/prod-serving.json
+          uv run --frozen python -m genai_gate.cli check-baseline \
+            --baseline-release release/production/release.yaml --serving-config build/prod-serving.json
 
       - name: Record a live run
         env:
@@ -145,7 +168,6 @@ jobs:
   promote:
     name: Promote to production
     needs: live-gate
-    if: vars.AWS_PROMOTE_ROLE_ARN != ''
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     environment: genai-prod
@@ -153,6 +175,16 @@ jobs:
       contents: read # checkout
       id-token: write # OIDC to the promote role
     steps:
+      - name: Check the environment variables
+        env:
+          ROLE_ARN: ${{ vars.AWS_PROMOTE_ROLE_ARN }}
+          REGION: ${{ vars.AWS_REGION }}
+        run: |
+          if [ -z "$ROLE_ARN" ] || [ -z "$REGION" ]; then
+            echo "::error::Set AWS_PROMOTE_ROLE_ARN and AWS_REGION on the genai-prod environment (terraform outputs)"
+            exit 1
+          fi
+
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -171,3 +203,7 @@ jobs:
 
       - name: Promote to prod
         run: scripts/promote.sh prod release/candidate/release.yaml
+
+      - name: Remind to move the baseline
+        run: |
+          echo "::notice::Prod now serves release/candidate. Commit it and its recorded run to release/production; the next live gate blocks until the baseline matches prod."

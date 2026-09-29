@@ -9,9 +9,17 @@ from pathlib import Path
 import pytest
 from conftest import ROOT, gate_inputs
 
-from genai_gate.checks import check_cost, check_quality, check_redteam, cost_per_request, p95, redteam_verdict
+from genai_gate.checks import (
+    check_cost,
+    check_quality,
+    check_redteam,
+    cost_per_request,
+    guardrail_cost_per_request,
+    p95,
+    redteam_verdict,
+)
 from genai_gate.gate import evaluate
-from genai_gate.records import RedTeamItem, RedTeamOutcome
+from genai_gate.records import RedTeamItem, RedTeamOutcome, Run
 
 MARKERS = ("I can't help with that",)
 
@@ -47,9 +55,45 @@ def test_cost_per_request_adds_tokens_and_guardrail_units() -> None:
     inputs = gate_inputs(ROOT / "release" / "production")
     answer = inputs.run.answers["gs-001"]
     # Nova Lite: 0.06 in / 0.24 out per 1M tokens; guardrail: 0.15 + 0.15 + 0.10 + 0.10 per 1,000 text units.
-    expected = answer.input_tokens * 0.06e-6 + answer.output_tokens * 0.24e-6 + answer.guardrail_text_units * 0.0005
+    assert answer.guardrail_units == {
+        "content": 2,
+        "denied_topics": 2,
+        "sensitive_information": 2,
+        "contextual_grounding": 2,
+    }
+    expected = answer.input_tokens * 0.06e-6 + answer.output_tokens * 0.24e-6 + 2 * 0.0005
     costs = cost_per_request(inputs.release, inputs.run, inputs.catalog)
     assert costs[0] == pytest.approx(expected)
+
+
+def _with_units(run: Run, units: dict[str, int]) -> Run:
+    answers = {i: dataclasses.replace(a, guardrail_units=units) for i, a in run.answers.items()}
+    return dataclasses.replace(run, answers=answers)
+
+
+def test_guardrail_cost_charges_each_policy_for_the_units_it_evaluated() -> None:
+    """Regression: every policy used to be charged the largest unit count, even policies that evaluated nothing."""
+    inputs = gate_inputs(ROOT / "release" / "candidate")
+    # Grounding runs on the output only: one unit, while the other policies saw input and output.
+    run = _with_units(inputs.run, {"content": 2, "denied_topics": 2, "sensitive_information": 2})
+    per_request = guardrail_cost_per_request(inputs.release, run, inputs.catalog)
+    assert per_request[0] == pytest.approx((2 * 0.15 + 2 * 0.15 + 2 * 0.10) / 1000)
+    run = _with_units(inputs.run, {"content": 2, "contextual_grounding": 1})
+    per_request = guardrail_cost_per_request(inputs.release, run, inputs.catalog)
+    assert per_request[0] == pytest.approx((2 * 0.15 + 1 * 0.10) / 1000)
+
+
+def test_cost_blocks_when_the_run_was_billed_for_an_unpriced_policy() -> None:
+    inputs = gate_inputs(ROOT / "release" / "candidate")
+    catalog = dataclasses.replace(
+        inputs.catalog,
+        guardrail_per_1k_text_units={
+            k: v for k, v in inputs.catalog.guardrail_per_1k_text_units.items() if k != "word"
+        },
+    )
+    run = _with_units(inputs.run, {"content": 2, "word": 2})
+    result = check_cost(inputs.release, run, inputs.baseline_release, inputs.baseline_run, catalog, inputs.policy)
+    assert any("no price for guardrail policies word" in f for f in result.findings)
 
 
 def test_quality_blocks_a_mean_below_the_floor_even_without_a_drop() -> None:

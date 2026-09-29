@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from genai_gate.cli import EXIT_BLOCK, EXIT_INVALID, EXIT_PASS, main
+from genai_gate.cli import EXIT_BLOCK, EXIT_INVALID, EXIT_PASS, baseline_problem, main, serving_config
 
 
 def test_validate_accepts_the_candidate(capsys: pytest.CaptureFixture[str]) -> None:
@@ -52,3 +52,28 @@ def test_serving_config_is_the_value_promoted_through_ssm(capsys: pytest.Capture
     assert len(value["release_digest"]) == 64
     # SSM Parameter Store standard tier holds up to 4 KB.
     assert len(json.dumps(value)) < 4096
+
+
+PRODUCTION = Path("release/production/release.yaml")
+
+
+def test_baseline_must_be_the_release_prod_serves(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """Regression: after a promotion or rollback the gate kept comparing against a stale committed baseline."""
+    served = tmp_path / "prod.json"
+    served.write_text(json.dumps(serving_config(PRODUCTION)))
+    args = ["check-baseline", "--baseline-release", str(PRODUCTION), "--serving-config", str(served)]
+    assert main(args) == EXIT_PASS
+
+    # Prod was promoted to the candidate, but release/production still holds the old release.
+    served.write_text(json.dumps(serving_config(Path("release/candidate/release.yaml"))))
+    assert main(args) == EXIT_BLOCK
+    assert "commit the promoted release" in capsys.readouterr().err
+
+    served.write_text("not json")
+    assert main(args) == EXIT_INVALID
+
+
+def test_baseline_check_accepts_an_unset_alias_only_as_unset() -> None:
+    assert baseline_problem(PRODUCTION, {"release": "unset"}) is None
+    assert baseline_problem(PRODUCTION, {"release": "support-answer"}) is not None
+    assert baseline_problem(PRODUCTION, []) is not None

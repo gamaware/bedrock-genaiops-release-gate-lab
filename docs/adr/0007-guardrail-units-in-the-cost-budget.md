@@ -12,8 +12,10 @@ characters) is billed once per policy that evaluates it.
 
 ## Decision
 
-- The cost check adds model tokens at the prices in `gate/models.yaml` and guardrail text units at the per-policy
-  prices, for the policies the release enables.
+- The cost check adds model tokens at the prices in `gate/models.yaml` and, for each guardrail policy, the text units
+  that policy was billed for (the `usage` field of ApplyGuardrail, recorded per policy in `guardrail_units`) at its
+  price. A policy that evaluated nothing, such as contextual grounding on an input, costs nothing.
+- Billed usage the catalog cannot price fails the run instead of counting as free.
 - The budget is absolute (USD per 1,000 requests) and relative (maximum increase against the baseline).
 - The evidence reports the guardrail's share of the cost.
 
@@ -21,8 +23,7 @@ characters) is billed once per policy that evaluates it.
 
 - Switching to a cheaper model saves little while the guardrail dominates, which the evidence shows (scenario
   `model-swap-quality-regression`: 7% saving).
-- The model is simplified: it bills every enabled policy on input and output. A client that enables some policies on
-  one side only should model that, or measure it from the `usage` field of ApplyGuardrail.
+- Recorded runs carry per-policy units, so enabling a policy on one side only shows up in the cost directly.
 - Prices change; `gate/models.yaml` is updated in a reviewed pull request.
 
 ## Compliance

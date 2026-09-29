@@ -16,8 +16,7 @@ concurrency:
 jobs:
   rollback:
     name: Roll back production
-    if: >-
-      github.ref == 'refs/heads/main' && vars.AWS_PROMOTE_ROLE_ARN != ''
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     environment: genai-prod
@@ -25,6 +24,17 @@ jobs:
       contents: read # checkout
       id-token: write # OIDC to the promote role
     steps:
+      # Environment variables resolve only inside a job that names the environment.
+      - name: Check the environment variables
+        env:
+          ROLE_ARN: ${{ vars.AWS_PROMOTE_ROLE_ARN }}
+          REGION: ${{ vars.AWS_REGION }}
+        run: |
+          if [ -z "$ROLE_ARN" ] || [ -z "$REGION" ]; then
+            echo "::error::Set AWS_PROMOTE_ROLE_ARN and AWS_REGION on the genai-prod environment (terraform outputs)"
+            exit 1
+          fi
+
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -38,3 +48,7 @@ jobs:
 
       - name: Roll back prod
         run: scripts/rollback.sh prod
+
+      - name: Remind to move the baseline
+        run: |
+          echo "::notice::Prod serves the previous release again. Restore release/production to it; the next live gate blocks until the baseline matches prod."

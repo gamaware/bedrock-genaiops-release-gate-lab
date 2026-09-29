@@ -63,7 +63,7 @@ platform team that reviews Terraform and YAML.
 | --- | --- | --- |
 | A change that lowers answer quality is blocked | Judge scores against minimums and against the baseline; critical questions scored one by one | `make test`, scenario `model-swap-quality-regression` |
 | A change that weakens safety is blocked | Deterministic red-team scoring; any prompt the baseline handled safely must stay safe | `make test`, scenario `guardrail-loosened-redteam` |
-| A change that breaks the cost or latency budget is blocked | Cost per 1,000 requests from tokens and guardrail text units; p95 latency | `make test`, scenario `model-upgrade-over-budget` |
+| A change that breaks the cost or latency budget is blocked | Cost per 1,000 requests from tokens and per-policy guardrail units; end-to-end p95 latency | `make test`, scenario `model-upgrade-over-budget` |
 | Only approved models reach production | Allowlist in `gate/models.yaml`; IAM allows only allowlisted model ARNs | `make test`, `terraform test` |
 | Evidence belongs to the release under review | Release digest and evaluation-set digests in every run manifest | `make test`, scenario `stale-evidence` |
 | Pull requests never touch AWS | Offline gate job has no `id-token` permission | zizmor, Checkov, workflow review |

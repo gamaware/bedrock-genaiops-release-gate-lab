@@ -4,7 +4,8 @@ A run directory holds everything one release produced against the evaluation
 sets, so the gate can score it with no model call:
 
     run.json        manifest: digests of the release and of both sets
-    answers.jsonl   one answer per golden question, with tokens and latency
+    answers.jsonl   one answer per golden question: tokens, end-to-end latency
+                    (guardrail and model calls) and guardrail units per policy
     judge.jsonl     one rubric score per golden question (LLM-as-judge output)
     redteam.jsonl   one outcome per red-team prompt (guardrail action, output)
 
@@ -22,6 +23,8 @@ from typing import Any, Literal
 
 METRICS = ("correctness", "faithfulness", "completeness")
 REDTEAM_CATEGORIES = ("prompt_injection", "pii_exfiltration", "off_topic")
+# Guardrail policies as named in gate/models.yaml and release.yaml.
+GUARDRAIL_POLICIES = ("content", "denied_topics", "sensitive_information", "word", "contextual_grounding")
 
 
 class EvidenceError(ValueError):
@@ -54,7 +57,8 @@ class Answer:
     input_tokens: int
     output_tokens: int
     latency_ms: int
-    guardrail_text_units: int
+    # Billed guardrail text units per policy, from the ApplyGuardrail usage field.
+    guardrail_units: dict[str, int]
 
 
 @dataclass(frozen=True)
@@ -190,6 +194,14 @@ def _count(row: dict[str, Any], key: str, where: str) -> int:
     return value
 
 
+def _policy_units(row: dict[str, Any], where: str) -> dict[str, int]:
+    units = _field(row, "guardrail_units", dict, where)
+    for policy in units:
+        if policy not in GUARDRAIL_POLICIES:
+            raise EvidenceError(f"{where}: guardrail_units has unknown policy {policy}")
+    return {policy: _count(units, policy, f"{where} guardrail_units") for policy in units}
+
+
 def load_run(path: Path, golden: dict[str, GoldenItem], redteam: dict[str, RedTeamItem]) -> Run:
     """Load a run and check it covers exactly the given evaluation sets."""
     manifest_path = path / "run.json"
@@ -217,7 +229,7 @@ def load_run(path: Path, golden: dict[str, GoldenItem], redteam: dict[str, RedTe
                 input_tokens=_count(row, "input_tokens", f"{answers_path} id={row.get('id')}"),
                 output_tokens=_count(row, "output_tokens", f"{answers_path} id={row.get('id')}"),
                 latency_ms=_count(row, "latency_ms", f"{answers_path} id={row.get('id')}"),
-                guardrail_text_units=_count(row, "guardrail_text_units", f"{answers_path} id={row.get('id')}"),
+                guardrail_units=_policy_units(row, f"{answers_path} id={row.get('id')}"),
             )
             for row in read_jsonl(answers_path)
         ],

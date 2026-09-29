@@ -28,15 +28,21 @@ look it up in `evals/`.
 ## Release
 
 1. Merge the pull request.
-2. Run the `release-gate` workflow on `main` (Actions, Run workflow). The live gate records a fresh run, gates it and,
-   on PASS, writes the staging alias.
+2. Run the `release-gate` workflow on `main` (Actions, Run workflow). The live gate first checks that
+   `release/production` is the release the prod alias serves (its digest against the parameter's `release_digest`)
+   and blocks if not. It then records a fresh run, gates it and, on PASS, writes the staging alias.
 3. Review the `release-evidence-live` artifact and the staging behaviour. Approve the `genai-prod` deployment to
    promote.
+4. Move the baseline: in a pull request, copy `release/candidate/` (release file, prompt and recorded run) to
+   `release/production/`. Until then the next live gate blocks, so no candidate is ever compared with a release
+   customers no longer get.
 
 ## Roll back
 
 Run the `rollback` workflow on `main` and approve it in `genai-prod`. It restores the previous prod value from the
-parameter history and labels the new version `rollback-of-v<N>`. From a terminal with the promote role:
+parameter history and labels the new version `rollback-of-v<N>`. Then restore `release/production/` to the release
+prod serves again (from git history); the live gate blocks until the baseline matches. From a terminal with the
+promote role:
 
 ```bash
 AWS_REGION=us-east-1 scripts/rollback.sh prod

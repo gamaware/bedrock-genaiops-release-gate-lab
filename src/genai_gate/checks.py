@@ -154,8 +154,18 @@ def cost_per_request(release: Release, run: Run, catalog: Catalog) -> list[float
 
 
 def guardrail_cost_per_request(release: Release, run: Run, catalog: Catalog) -> list[float]:
-    per_unit = sum(catalog.guardrail_per_1k_text_units[p] for p in release.guardrail_policies) / 1000
-    return [answer.guardrail_text_units * per_unit for answer in run.answers.values()]
+    """Each policy is billed for the units it evaluated, as ApplyGuardrail reported them."""
+    prices = catalog.guardrail_per_1k_text_units
+    return [
+        sum(units * prices[policy] / 1000 for policy, units in answer.guardrail_units.items())
+        for answer in run.answers.values()
+    ]
+
+
+def unpriced_policies(release: Release, run: Run, catalog: Catalog) -> list[str]:
+    """Policies the release enables or the run was billed for that have no price."""
+    used = set(release.guardrail_policies).union(*(a.guardrail_units for a in run.answers.values()))
+    return sorted(p for p in used if p not in catalog.guardrail_per_1k_text_units)
 
 
 def p95(values: list[int]) -> int:
@@ -177,7 +187,7 @@ def check_cost(
     if release.model_id not in catalog.models:
         result.findings.append(f"no price for model {release.model_id}; cost cannot be checked")
         return result
-    unpriced = [p for p in release.guardrail_policies if p not in catalog.guardrail_per_1k_text_units]
+    unpriced = unpriced_policies(release, run, catalog)
     if unpriced:
         result.findings.append(f"no price for guardrail policies {', '.join(unpriced)}; cost cannot be checked")
         return result
@@ -185,9 +195,7 @@ def check_cost(
     cand_guardrail = fmean(guardrail_cost_per_request(release, run, catalog)) * 1000
 
     base_cost: float | None = None
-    if baseline_release.model_id in catalog.models and all(
-        p in catalog.guardrail_per_1k_text_units for p in baseline_release.guardrail_policies
-    ):
+    if baseline_release.model_id in catalog.models and not unpriced_policies(baseline_release, baseline, catalog):
         base_cost = fmean(cost_per_request(baseline_release, baseline, catalog)) * 1000
     result.rows.append(
         (

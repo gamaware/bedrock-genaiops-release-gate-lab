@@ -6,9 +6,10 @@
 #    the one in LIVE_ACCOUNT_ID (set by the maintainer, never committed).
 # 2. Applies infra/terraform/release-gate from a temporary copy, tagged
 #    Project=bedrock-genaiops-release-gate-lab and Ephemeral=true.
-# 3. Publishes a prompt version, writes a release file that pins it and the
-#    guardrail version Terraform published, records a live run (Converse and
-#    ApplyGuardrail, Nova Lite as model and judge) and runs the gate on it.
+# 3. Publishes a prompt version, writes a release file that pins it, the
+#    guardrail version Terraform published and the sandbox knowledge base,
+#    records a live run (GetPrompt, Retrieve, Converse and ApplyGuardrail,
+#    Nova Lite as model and judge) and runs the gate on it.
 # 4. Promotes to the staging alias twice and rolls back once, then checks the
 #    parameter holds the first value again.
 # 5. Destroys everything on exit (success, failure or Ctrl-C) and lists any
@@ -19,8 +20,10 @@
 # guardrail text units, KMS key pending deletion is free). Needs the account's
 # GitHub OIDC provider (github-actions-aws-oidc-lab creates it).
 #
-# Env: LIVE_ACCOUNT_ID (required), LIVE_REGION (default us-east-1),
-#      LIVE_YES=1 skips the confirmation prompt.
+# Env: LIVE_ACCOUNT_ID (required), LIVE_KNOWLEDGE_BASE_ID (required: an
+#      existing sandbox knowledge base loaded with the Harbor Goods policy
+#      text; the live run retrieves its context from it), LIVE_REGION (default
+#      us-east-1), LIVE_YES=1 skips the confirmation prompt.
 set -euo pipefail
 
 PROFILE="personal"
@@ -33,6 +36,7 @@ NAME="hg-gate-$RUN_ID"
 WORK="$(mktemp -d)"
 
 : "${LIVE_ACCOUNT_ID:?set LIVE_ACCOUNT_ID to the personal sandbox account ID}"
+: "${LIVE_KNOWLEDGE_BASE_ID:?set LIVE_KNOWLEDGE_BASE_ID to a sandbox knowledge base with the policy text}"
 
 aws_cli() {
   aws --profile "$PROFILE" --region "$REGION" "$@"
@@ -69,6 +73,7 @@ TF_VARS=(
   -var "region=$REGION"
   -var "github_repository=example-org/$PROJECT"
   -var "github_oidc_provider_arn=$oidc_arn"
+  -var "knowledge_base_id=$LIVE_KNOWLEDGE_BASE_ID"
   -var retain_guardrail_versions=false
   -var force_destroy=true
   -var "tags={\"Project\"=\"$PROJECT\",\"Ephemeral\"=\"true\",\"run\"=\"$RUN_ID\"}"
@@ -98,16 +103,18 @@ prompt_version="$(aws_cli bedrock-agent create-prompt-version --prompt-identifie
 
 echo "--- release pinned to prompt $prompt_version and guardrail $guardrail_version"
 release="$WORK/release/candidate/release.yaml"
-uv run --frozen python - "$release" "$prompt_arn" "$prompt_version" "$guardrail_id" "$guardrail_version" <<'PY'
+uv run --frozen python - "$release" "$prompt_arn" "$prompt_version" "$guardrail_id" "$guardrail_version" \
+  "$LIVE_KNOWLEDGE_BASE_ID" <<'PY'
 import sys
 from pathlib import Path
 
 import yaml
 
-path, arn, prompt_version, guardrail_id, guardrail_version = sys.argv[1:]
+path, arn, prompt_version, guardrail_id, guardrail_version, kb_id = sys.argv[1:]
 data = yaml.safe_load(Path(path).read_text())
 data["prompt"].update(arn=arn, version=prompt_version)
 data["guardrail"].update(id=guardrail_id, version=guardrail_version)
+data["knowledge_base"]["id"] = kb_id
 data["release"]["change"] = "Live test: candidate pinned to the sandbox prompt and guardrail."
 Path(path).write_text(yaml.safe_dump(data, sort_keys=False))
 PY

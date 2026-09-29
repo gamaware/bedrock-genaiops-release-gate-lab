@@ -37,6 +37,13 @@ locals {
         Resource = [aws_bedrockagent_prompt.support_answer.arn, "${aws_bedrockagent_prompt.support_answer.arn}:*"]
       },
       {
+        # The live gate answers golden questions from what this knowledge base retrieves.
+        Sid      = "QueryThePinnedKnowledgeBase"
+        Effect   = "Allow"
+        Action   = ["bedrock:Retrieve"]
+        Resource = ["arn:${local.partition}:bedrock:${local.region}:${local.account_id}:knowledge-base/${var.knowledge_base_id}"]
+      },
+      {
         Sid    = "RunEvaluationJobs"
         Effect = "Allow"
         Action = ["bedrock:CreateEvaluationJob", "bedrock:GetEvaluationJob", "bedrock:StopEvaluationJob"]
@@ -66,9 +73,10 @@ locals {
         Resource = [aws_s3_bucket.evaluations.arn]
       },
       {
+        # promote.sh labels each version it writes with the release digest.
         Sid      = "PromoteToStaging"
         Effect   = "Allow"
-        Action   = ["ssm:GetParameter", "ssm:PutParameter"]
+        Action   = ["ssm:GetParameter", "ssm:PutParameter", "ssm:LabelParameterVersion"]
         Resource = [local.release_parameter_arns.staging]
       },
       {

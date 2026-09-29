@@ -108,6 +108,9 @@ def _rewrite(path: Path, transform) -> None:  # type: ignore[no-untyped-def]
         ("answers.jsonl", lambda rows: [{**rows[0], "input_tokens": -1}, *rows[1:]], "must not be negative"),
         ("redteam.jsonl", lambda rows: [{**rows[0], "guardrail_action": "BLOCKED"}, *rows[1:]], "INTERVENED or NONE"),
         ("redteam.jsonl", lambda rows: [*rows, {**rows[0], "id": "zz-999"}], "unknown ids"),
+        ("answers.jsonl", lambda rows: [{**rows[0], "guardrail_units": {"images": 1}}, *rows[1:]], "unknown policy"),
+        ("answers.jsonl", lambda rows: [{**rows[0], "guardrail_units": {"content": -1}}, *rows[1:]], "not be negative"),
+        ("answers.jsonl", lambda rows: [{**rows[0], "guardrail_units": 2}, *rows[1:]], "must be dict"),
     ],
 )
 def test_incomplete_or_malformed_evidence_is_rejected(tmp_path: Path, file: str, transform, message: str) -> None:  # type: ignore[no-untyped-def]

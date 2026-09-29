@@ -67,6 +67,17 @@ variable "judge_model_id" {
   default     = "amazon.nova-lite-v1:0"
 }
 
+variable "knowledge_base_id" {
+  description = "ID of the existing knowledge base the release pins (knowledge_base.id in release.yaml). The gate role may query only this one."
+  type        = string
+  default     = "HGPOLICYKB"
+
+  validation {
+    condition     = can(regex("^[0-9A-Za-z]{10}$", var.knowledge_base_id))
+    error_message = "knowledge_base_id must be a 10-character Amazon Bedrock knowledge base ID."
+  }
+}
+
 variable "prompt_template_file" {
   description = "Prompt template to publish to Prompt Management, relative to this stack. Defaults to the release candidate."
   type        = string

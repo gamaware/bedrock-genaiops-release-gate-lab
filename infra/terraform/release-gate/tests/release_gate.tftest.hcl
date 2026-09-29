@@ -190,6 +190,33 @@ run "roles_are_scoped_to_one_environment_each" {
   }
 
   assert {
+    condition = alltrue([
+      for action in ["ssm:PutParameter", "ssm:LabelParameterVersion"] : anytrue([
+        for s in jsondecode(aws_iam_role_policy.gate.policy).Statement :
+        contains(flatten([s.Action]), action) && contains(flatten([s.Resource]), "arn:aws:ssm:us-east-1:111122223333:parameter/harbor-support/staging/release")
+      ])
+    ])
+    error_message = "The gate role must write and label the staging alias: promote.sh labels every version it writes."
+  }
+
+  assert {
+    condition = alltrue([
+      for action in ["ssm:PutParameter", "ssm:LabelParameterVersion", "ssm:GetParameterHistory"] : anytrue([
+        for s in jsondecode(aws_iam_role_policy.promote.policy).Statement :
+        contains(flatten([s.Action]), action) && contains(flatten([s.Resource]), "arn:aws:ssm:us-east-1:111122223333:parameter/harbor-support/prod/release")
+      ])
+    ])
+    error_message = "The promote role must write, label and read the history of the prod alias (promote.sh, rollback.sh)."
+  }
+
+  assert {
+    condition = one([
+      for s in jsondecode(aws_iam_role_policy.gate.policy).Statement : s.Resource if s.Sid == "QueryThePinnedKnowledgeBase"
+    ]) == ["arn:aws:bedrock:us-east-1:111122223333:knowledge-base/HGPOLICYKB"]
+    error_message = "The gate role may retrieve from the pinned knowledge base only."
+  }
+
+  assert {
     condition     = jsondecode(aws_iam_role.evaluator.assume_role_policy).Statement[0].Condition.StringEquals["aws:SourceAccount"] == "111122223333"
     error_message = "The evaluation job role must be assumable only from this account's Bedrock jobs."
   }

@@ -10,8 +10,10 @@ terraform init -backend-config=...              # see backend.tf.example
 terraform apply
 ```
 
-Set the outputs `gate_role_arn` and `promote_role_arn` as the repository variables `AWS_GATE_ROLE_ARN` and
-`AWS_PROMOTE_ROLE_ARN`, and pin `guardrail_id`, `guardrail_version` and `prompt_arn` in `release.yaml`.
+Set the output `gate_role_arn` as `AWS_GATE_ROLE_ARN` on the `genai-staging` environment and `promote_role_arn` as
+`AWS_PROMOTE_ROLE_ARN` on `genai-prod`, with `AWS_REGION` on both (environment variables, not repository variables),
+and pin `guardrail_id`, `guardrail_version` and `prompt_arn` in `release.yaml`. Set `knowledge_base_id` to the
+knowledge base `release.yaml` pins.
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
@@ -67,6 +69,7 @@ Set the outputs `gate_role_arn` and `promote_role_arn` as the repository variabl
 | force\_destroy | Allow destroying the evaluation bucket with objects in it. Only the live test sets true. | `bool` | `false` | no |
 | guardrail\_intervention\_alarm\_pct | Alarm when this share of guardrail evaluations intervene, sustained for 15 minutes. | `number` | `20` | no |
 | judge\_model\_id | Model that scores answers (LLM-as-judge) in the live gate and in evaluation jobs. | `string` | `"amazon.nova-lite-v1:0"` | no |
+| knowledge\_base\_id | ID of the existing knowledge base the release pins (knowledge\_base.id in release.yaml). The gate role may query only this one. | `string` | `"HGPOLICYKB"` | no |
 | name | Prefix for every resource name. | `string` | `"harbor-support"` | no |
 | prompt\_model\_id | Model the managed prompt's variant targets. Must be in allowed\_model\_ids. | `string` | `"amazon.nova-lite-v1:0"` | no |
 | prompt\_template\_file | Prompt template to publish to Prompt Management, relative to this stack. Defaults to the release candidate. | `string` | `"../../../release/candidate/prompt.txt"` | no |
