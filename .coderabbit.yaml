@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: en-US
+reviews:
+  profile: assertive
+  request_changes_workflow: false
+  high_level_summary: true
+  auto_review:
+    enabled: true
+    drafts: false
+  path_instructions:
+    - path: "src/genai_gate/**/*.py"
+      instructions: >-
+        The gate must fail closed: missing, malformed or stale evidence blocks a release, never passes it. Checks stay
+        pure (no model or AWS call outside live.py). Any new rule needs a unit test and, if it changes a verdict, a
+        fixture scenario under fixtures/scenarios/ with expected.json.
+    - path: "gate/*.yaml"
+      instructions: >-
+        Thresholds and prices decide releases. Ask for the reason of every loosened threshold, and check that
+        report/evidence/ was regenerated (make evidence) in the same pull request.
+    - path: "evals/**"
+      instructions: >-
+        Evaluation sets are reviewed data. Red-team prompts must stay fictional (no real personal data) and each needs
+        a must_not_contain list that proves a leak.
+    - path: "release/**"
+      instructions: >-
+        A change to release.yaml or prompt.txt needs a recorded run whose run.json carries the new release digest.
+        Pinned guardrail versions must be numbers, never DRAFT.
+    - path: "infra/terraform/**/*.tf"
+      instructions: >-
+        Check that IAM access stays scoped to one job per role, that no Allow statement uses a wildcard action or
+        resource (the KMS key policy's account root statement is the AWS default exception), that encryption uses
+        the release key, and that new behaviour has a terraform test assertion.
+    - path: "infra/terraform/**/tests/*.tftest.hcl"
+      instructions: >-
+        Tests must use mock_provider only and must not reach AWS.
+    - path: ".github/workflows/*.yml"
+      instructions: >-
+        Actions pinned by full SHA, permissions {} at workflow level, timeout-minutes on every job, event data
+        through env. Pull request jobs must never get id-token or AWS credentials.
+    - path: "**/*.sh"
+      instructions: >-
+        Must pass shellcheck and shellharden; quote variables; use arrays for arguments.
+    - path: "**/*.md"
+      instructions: >-
+        Lines up to 120 characters (tables exempt). Fictional names only (Harbor Goods, AWS documentation account
+        IDs). No dates.

@@ -1,0 +1,12 @@
+{"id": "gs-001", "correctness": 5, "faithfulness": 5, "completeness": 5, "rationale": "Matches the reference and uses only the retrieved policy."}
+{"id": "gs-002", "correctness": 3, "faithfulness": 2, "completeness": 3, "rationale": "Wrong window and omits the restocking fee."}
+{"id": "gs-003", "correctness": 5, "faithfulness": 5, "completeness": 5, "rationale": "Matches the reference and uses only the retrieved policy."}
+{"id": "gs-004", "correctness": 4, "faithfulness": 5, "completeness": 4, "rationale": "Matches the reference and uses only the retrieved policy."}
+{"id": "gs-005", "correctness": 3, "faithfulness": 3, "completeness": 3, "rationale": "Gives the fabric term for the whole sofa; misses the 2-year frame warranty."}
+{"id": "gs-006", "correctness": 3, "faithfulness": 5, "completeness": 2, "rationale": "Too vague: no earn rate, conversion or expiry."}
+{"id": "gs-007", "correctness": 5, "faithfulness": 4, "completeness": 5, "rationale": "Matches the reference and uses only the retrieved policy."}
+{"id": "gs-008", "correctness": 2, "faithfulness": 2, "completeness": 3, "rationale": "Wrong deadline (48 hours) and wrongly asks for a return."}
+{"id": "gs-009", "correctness": 5, "faithfulness": 5, "completeness": 4, "rationale": "Matches the reference and uses only the retrieved policy."}
+{"id": "gs-010", "correctness": 2, "faithfulness": 2, "completeness": 2, "rationale": "Contradicts the cancellation policy."}
+{"id": "gs-011", "correctness": 5, "faithfulness": 5, "completeness": 5, "rationale": "Matches the reference and uses only the retrieved policy."}
+{"id": "gs-012", "correctness": 5, "faithfulness": 5, "completeness": 5, "rationale": "Matches the reference and uses only the retrieved policy."}

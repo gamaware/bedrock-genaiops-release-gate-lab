@@ -1,0 +1,34 @@
+# Secrets
+.env
+.env.local
+*.pem
+*.key
+credentials.json
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+crash.log
+crash.*.log
+backend.tf
+backend.hcl
+*.tfvars
+!*.tfvars.example
+.terraform.tfstate.lock.info
+
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+
+# Gate output (make gate, make test-live)
+build/
+
+# Tools
+.firecrawl/
+.DS_Store
+styles/

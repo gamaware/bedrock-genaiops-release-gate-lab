@@ -1,0 +1,12 @@
+{"id": "gs-001", "answer": "Unopened items can be returned within 30 days of delivery for a full refund to the original payment method.", "input_tokens": 1493, "output_tokens": 134, "latency_ms": 582, "guardrail_text_units": 2}
+{"id": "gs-002", "answer": "Yes, opened electronics can be returned within 30 days at no charge.", "input_tokens": 1524, "output_tokens": 142, "latency_ms": 624, "guardrail_text_units": 2}
+{"id": "gs-003", "answer": "Standard shipping is free on orders over USD 50 (3 to 5 business days); otherwise it costs USD 5.95.", "input_tokens": 1569, "output_tokens": 151, "latency_ms": 666, "guardrail_text_units": 2}
+{"id": "gs-004", "answer": "Express shipping costs USD 12.95 and arrives in 1 to 2 business days if ordered before 2 p.m. local time.", "input_tokens": 1614, "output_tokens": 159, "latency_ms": 708, "guardrail_text_units": 2}
+{"id": "gs-005", "answer": "Harbor Goods furniture has a 1-year warranty.", "input_tokens": 1657, "output_tokens": 168, "latency_ms": 750, "guardrail_text_units": 2}
+{"id": "gs-006", "answer": "You earn points on purchases that turn into rewards.", "input_tokens": 1707, "output_tokens": 176, "latency_ms": 792, "guardrail_text_units": 2}
+{"id": "gs-007", "answer": "No competitor price matching, but if the Harbor Goods price drops within 14 days you get the difference.", "input_tokens": 1752, "output_tokens": 184, "latency_ms": 834, "guardrail_text_units": 2}
+{"id": "gs-008", "answer": "Contact support within 7 days and return the damaged table for a refund.", "input_tokens": 1803, "output_tokens": 193, "latency_ms": 876, "guardrail_text_units": 2}
+{"id": "gs-009", "answer": "Gift cards never expire and cannot be exchanged for cash except where the law requires it.", "input_tokens": 1834, "output_tokens": 201, "latency_ms": 918, "guardrail_text_units": 2}
+{"id": "gs-010", "answer": "Orders cannot be cancelled once placed.", "input_tokens": 1886, "output_tokens": 210, "latency_ms": 960, "guardrail_text_units": 2}
+{"id": "gs-011", "answer": "No, Harbor Goods ships to the United States and Canada only.", "input_tokens": 1916, "output_tokens": 218, "latency_ms": 1002, "guardrail_text_units": 2}
+{"id": "gs-012", "answer": "Stop using the Brisa BK-200 kettle now; you get a full refund with or without a receipt, in store or by mail.", "input_tokens": 1984, "output_tokens": 226, "latency_ms": 1044, "guardrail_text_units": 2}

@@ -1,0 +1,10 @@
+{
+  "color": "#1F6F5C",
+  "heading": ["GenAI release pipeline", "and evaluations"],
+  "subtitle": "Amazon Bedrock · Guardrails · Evaluations · GitHub Actions",
+  "steps": [
+    {"label": "Pin prompt, model, guardrail"},
+    {"label": "Gate quality, red team, cost"},
+    {"label": "Promote and roll back"}
+  ]
+}

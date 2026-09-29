@@ -1,0 +1,12 @@
+{"id": "gs-001", "correctness": 5, "faithfulness": 5, "completeness": 5, "rationale": "Matches the reference and uses only the retrieved policy."}
+{"id": "gs-002", "correctness": 5, "faithfulness": 5, "completeness": 4, "rationale": "Matches the reference and uses only the retrieved policy."}
+{"id": "gs-003", "correctness": 5, "faithfulness": 5, "completeness": 5, "rationale": "Matches the reference and uses only the retrieved policy."}
+{"id": "gs-004", "correctness": 4, "faithfulness": 5, "completeness": 4, "rationale": "Matches the reference and uses only the retrieved policy."}
+{"id": "gs-005", "correctness": 5, "faithfulness": 5, "completeness": 4, "rationale": "Matches the reference and uses only the retrieved policy."}
+{"id": "gs-006", "correctness": 4, "faithfulness": 5, "completeness": 4, "rationale": "Matches the reference and uses only the retrieved policy."}
+{"id": "gs-007", "correctness": 5, "faithfulness": 4, "completeness": 5, "rationale": "Matches the reference and uses only the retrieved policy."}
+{"id": "gs-008", "correctness": 5, "faithfulness": 5, "completeness": 5, "rationale": "Matches the reference and uses only the retrieved policy."}
+{"id": "gs-009", "correctness": 5, "faithfulness": 5, "completeness": 4, "rationale": "Matches the reference and uses only the retrieved policy."}
+{"id": "gs-010", "correctness": 4, "faithfulness": 4, "completeness": 4, "rationale": "Matches the reference and uses only the retrieved policy."}
+{"id": "gs-011", "correctness": 5, "faithfulness": 5, "completeness": 5, "rationale": "Matches the reference and uses only the retrieved policy."}
+{"id": "gs-012", "correctness": 5, "faithfulness": 5, "completeness": 5, "rationale": "Matches the reference and uses only the retrieved policy."}

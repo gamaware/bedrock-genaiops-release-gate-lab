@@ -1,0 +1,7 @@
+{
+  "verdict": "BLOCK",
+  "failed_checks": [
+    "release",
+    "cost and latency"
+  ]
+}

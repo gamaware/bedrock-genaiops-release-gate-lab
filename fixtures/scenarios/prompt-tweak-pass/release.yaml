@@ -1,0 +1,30 @@
+# Harbor Goods support assistant: every pin that changes an answer.
+# Schema: src/genai_gate/release.schema.json. Validate with `make validate`.
+release:
+  name: support-answer
+  change: 'Prompt version 5: short answers that name the policy used.'
+model:
+  id: amazon.nova-lite-v1:0
+  inference:
+    max_tokens: 400
+    temperature: 0.2
+    top_p: 0.9
+prompt:
+  arn: arn:aws:bedrock:us-east-1:111122223333:prompt/HGSUPPORT1
+  version: '5'
+  template_file: prompt.txt
+  template_sha256: 0a77948ebbf4775945953ddc69d698997ea3ce9126af911665ff81db9bc6bb80
+guardrail:
+  id: hg7k2m9q4x1a
+  version: '3'
+  policies:
+  - content
+  - denied_topics
+  - sensitive_information
+  - contextual_grounding
+knowledge_base:
+  id: HGPOLICYKB
+  chunking:
+    strategy: FIXED_SIZE
+    max_tokens: 300
+    overlap_percentage: 20
