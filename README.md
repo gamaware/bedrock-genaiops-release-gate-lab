@@ -71,6 +71,8 @@ platform team that reviews Terraform and YAML.
 
 ## Architecture
 
+![Animated flow: change, evaluations, verdict, promote](docs/diagrams/architecture-animated.svg)
+
 ```mermaid
 flowchart LR
   dev[Engineer] -->|pull request: release.yaml, prompt, gate policy| gh[GitHub]
@@ -215,9 +217,10 @@ Workflows start from `permissions: {}`, pin actions by SHA and set timeouts. Pul
   thresholds leave a margin; a real engagement calibrates the judge against human labels before trusting it.
 - **Small sets:** 12 golden questions and 12 red-team prompts show the mechanism. A client set starts at 50 to 100
   questions drawn from real tickets, reviewed by support leads.
-- **Out of scope:** the knowledge base itself (see `terraform-aws-bedrock-rag-lab`), the GitHub OIDC provider (see
-  [github-actions-aws-oidc-lab](https://github.com/gamaware/github-actions-aws-oidc-lab)), model invocation logging
-  (an account-wide setting), and online evaluation of production traffic.
+- **Out of scope:** the knowledge base itself (see
+  [terraform-aws-bedrock-rag-lab](https://github.com/gamaware/terraform-aws-bedrock-rag-lab)), the GitHub OIDC
+  provider (see [github-actions-aws-oidc-lab](https://github.com/gamaware/github-actions-aws-oidc-lab)), model
+  invocation logging (an account-wide setting), and online evaluation of production traffic.
 - **A real engagement adds:** Amazon Bedrock evaluation jobs for larger sets (the evaluator role and bucket are
   already here), separate staging and production accounts, AgentCore Evaluations online configuration for agents,
   and a dashboard of gate verdicts over time.

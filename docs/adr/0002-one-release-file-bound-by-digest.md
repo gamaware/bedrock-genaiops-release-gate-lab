@@ -33,5 +33,5 @@ another.
 
 ## Notes
 
-The knowledge base ID and chunking are pinned but not re-ingested by this lab; `terraform-aws-bedrock-rag-lab` owns
-the knowledge base.
+The knowledge base ID and chunking are pinned but not re-ingested by this lab;
+[terraform-aws-bedrock-rag-lab](https://github.com/gamaware/terraform-aws-bedrock-rag-lab) owns the knowledge base.
