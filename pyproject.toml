@@ -12,14 +12,14 @@ dependencies = [
 
 [project.optional-dependencies]
 # Only the live stage (collect --live) needs the AWS SDK.
-live = ["boto3==1.40.61"]
+live = ["boto3==1.43.99"]
 
 [project.scripts]
 genai-gate = "genai_gate.cli:main"
 
 [dependency-groups]
 dev = [
-  "boto3==1.40.61",
+  "boto3==1.43.99",
   "pytest==9.1.1",
 ]
 
