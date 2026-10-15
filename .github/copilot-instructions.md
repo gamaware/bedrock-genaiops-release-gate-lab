@@ -11,3 +11,4 @@ When reviewing pull requests in this repository:
 - Flag any suppressed lint rule or scanner skip that lacks a reason next to the code.
 - Only fictional names and AWS documentation example account IDs may appear; no real IDs, ARNs, IPs or emails.
 - Verify conventional commit format in PR titles.
+- Flag job-marketplace profile links, service offers and sales badges; none are allowed.

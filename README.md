@@ -230,10 +230,8 @@ Workflows start from `permissions: {}`, pin actions by SHA and set timeouts. Pul
 
 ## Related work
 
-Part of the [AWS DevOps portfolio](https://github.com/gamaware/aws-devops-portfolio), under the service
-[GenAI release pipeline and evaluations on Upwork](https://www.upwork.com/freelancers/~014b3520cf9e140103). The
-keyless deploy roles and workflow hardening come from
-[github-actions-aws-oidc-lab](https://github.com/gamaware/github-actions-aws-oidc-lab).
+Part of the [AWS DevOps portfolio](https://github.com/gamaware/aws-devops-portfolio). The keyless deploy roles and
+workflow hardening come from [github-actions-aws-oidc-lab](https://github.com/gamaware/github-actions-aws-oidc-lab).
 
 ### Built on
 
