@@ -12,7 +12,9 @@ TERRAFORM ?= terraform
 TFLINT    ?= tflint
 CHECKOV   := uvx checkov==3.3.19
 RUFF      := uvx ruff@0.16.9
-SEMGREP   := uvx semgrep==1.178.0
+# Pinned to the project's Python: unpinned, uvx picks uv's newest managed
+# Python (3.15), where semgrep 1.178.0's engine exits with a fatal error.
+SEMGREP   := uvx --python 3.13 semgrep==1.178.0
 ACTIONLINT := uvx --from actionlint-py==1.7.12.25 actionlint
 ZIZMOR    := uvx zizmor==1.30.1
 TF_STACK  := infra/terraform/release-gate
