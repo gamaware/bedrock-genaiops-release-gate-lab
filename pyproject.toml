@@ -20,7 +20,7 @@ genai-gate = "genai_gate.cli:main"
 [dependency-groups]
 dev = [
   "boto3==1.40.61",
-  "pytest==9.1.1",
+  "pytest==9.2.0",
 ]
 
 [build-system]
