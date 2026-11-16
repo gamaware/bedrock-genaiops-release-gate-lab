@@ -16,6 +16,10 @@ updates:
       interval: weekly
     cooldown:
       default-days: 7
+    groups:
+      uv-all:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: terraform
     directories:
@@ -24,3 +28,7 @@ updates:
       interval: weekly
     cooldown:
       default-days: 7
+    groups:
+      terraform-all:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
